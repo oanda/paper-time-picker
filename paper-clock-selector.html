@@ -70,16 +70,19 @@
         text-align: center;
         text-anchor: middle;
       }
-      .number text.clipped {
+      .clipping-enabled .number text.clipped {
         z-index: 4;
         fill: var(--text-primary-color);
         clip-path: url('#handClip');
+      }
+      .number text.clipped.text-primary-color {
+        fill: var(--text-primary-color);
       }
       .select-area {
         cursor: pointer;
         fill-opacity: 0;
       }
-      #clock.animating #clockHand, 
+      #clock.animating #clockHand,
       #clock.animating #clipCircle {
         transition: transform 150ms ease-in;
       }
@@ -97,7 +100,7 @@
         <circle class="disc-large" r$="{{_selectorSize}}" cx$="{{_handX}}" cy$="{{_handY}}"></circle>
         <circle class="disc-small" r$="{{_selectorDotSize}}" cx$="{{_handX}}" cy$="{{_handY}}"></circle>
       </g>
-      <g id="numbers"></g>
+      <g id="numbers" class$="{{clippingEnabled}}"></g>
       <path class="select-area" on-tap="_onTouch" on-track="_onTouch"
         d$="{{_getSelectArea(_radius, _selectorInner, _selectorOuter)}}"></path>
     </svg>
@@ -119,10 +122,10 @@
         from = from || 0;
         angle = normalizeAngle(from);
         if ( angle < 180 && (to > (angle + 180)) ) {
-          offset = -360; 
+          offset = -360;
         }
         if ( angle >= 180 && (to <= (angle - 180)) ) {
-          offset = 360; 
+          offset = 360;
         }
         return from + offset + (to - angle);
       }
@@ -157,6 +160,10 @@
           animated: {
             type: Boolean,
             value: false
+          },
+          clippingEnabled: {
+            type: String,
+            value: 'clipping-enabled'
           }
         },
         listeners: {
@@ -169,6 +176,10 @@
           Polymer.IronResizableBehavior
         ],
         ready: function() {
+          // Relates to https://github.com/bendavis78/paper-time-picker/issues/29
+          if (navigator.userAgent.search('Firefox') !== -1) {
+            this.clippingEnabled = 'clipping-disabled';
+          }
           this._transitionEvent = this.style.WebkitTransition ? 'transitionEnd' : 'webkitTransitionEnd';
           this._populate();
           this._selectedChanged(this.selected);
@@ -243,6 +254,18 @@
           }
           this._vibrate();
           this.setClockHand((360 / this.count) * this.selected);
+
+          if (this.clippingEnabled !== 'clipping-enabled') {
+            var elements = this.querySelectorAll('.number text.clipped');
+            for (var i = 0; i < elements.length; i++) {
+              if (parseInt(elements[i].innerHTML) === this.selected) {
+                elements[i].classList.add('text-primary-color');
+              }
+              else {
+                elements[i].classList.remove('text-primary-color');
+              }
+            }
+          }
         },
         _stepChanged: function(value, oldValue) {
           this._step = oldValue;
@@ -396,11 +419,11 @@
         },
         _getSelectArea: function(radius, outer, inner) {
           return '\n' +
-            'M ' + (radius - outer) + ' ' + radius + '\n' + 
-            'A ' + outer + ' ' + outer + ' 0 0 0 ' + (radius + outer) + ' ' + radius + '\n' + 
-            'A ' + outer + ' ' + outer + ' 0 0 0 ' + (radius - outer) + ' ' + radius + '\n' + 
-            'M ' + (radius - inner) + ' ' + radius + '\n' + 
-            'A ' + inner + ' ' + inner + ' 0 0 1 ' + (radius + inner) + ' ' + radius + '\n'+ 
+            'M ' + (radius - outer) + ' ' + radius + '\n' +
+            'A ' + outer + ' ' + outer + ' 0 0 0 ' + (radius + outer) + ' ' + radius + '\n' +
+            'A ' + outer + ' ' + outer + ' 0 0 0 ' + (radius - outer) + ' ' + radius + '\n' +
+            'M ' + (radius - inner) + ' ' + radius + '\n' +
+            'A ' + inner + ' ' + inner + ' 0 0 1 ' + (radius + inner) + ' ' + radius + '\n'+
             'A ' + inner + ' ' + inner + ' 0 0 1 ' + (radius - inner) + ' ' + radius;
         },
         _onTouch: function(event) {
